@@ -1,0 +1,27 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "MCP",
+	"Description": "Model Context Protocol plugin for AI Agent integration",
+	"Category": "Developer",
+	"CreatedBy": "Seria Team",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": false,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "MCP",
+			"Type": "Editor",
+			"LoadingPhase": "PostEngineInit",
+			"WhitelistPlatforms": [ "Win64" ],
+			"BlacklistPlatforms": [],
+			"BlacklistTargets": [ "Server", "Client" ]
+		}
+	]
+}

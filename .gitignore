@@ -1,0 +1,24 @@
+# Build artifacts
+Binaries/
+Intermediate/
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.dll
+*.exe
+
+# UE generated
+*.uplugin.saved
+*.autoload
+
+# IDE
+.vs/
+.vscode/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
