@@ -17,7 +17,7 @@ class FMCPAssetService : public IMCPAssetService
 {
 public:
 	FMCPAssetService();
-	virtual ~FMCPAssetService() override;
+	virtual ~FMCPAssetService() override {};
 
 	// IMCPAssetService interface
 	virtual bool ListAssets(const FString& Path, bool bRecursive, const FString& Filter, TArray<FAssetData>& OutAssets) override;

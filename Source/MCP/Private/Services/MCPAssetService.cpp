@@ -1,14 +1,17 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 // From Penguin Assistant Start
 #include "Services/MCPAssetService.h"
+
+#include "AssetExportTask.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetToolsModule.h"
 #include "IAssetTools.h"
 #include "AssetViewUtils.h"
 #include "Editor.h"
+#include "JsonSerializer.h"
 #include "UObject/UObjectGlobals.h"
 #include "Factories/Factory.h"
-#include "Editor/AssetImportData.h"
+#include "EditorFramework/AssetImportData.h"
 #include "ObjectTools.h"
 #include "PackageTools.h"
 #include "Exporters/Exporter.h"
@@ -42,7 +45,7 @@ bool FMCPAssetService::ListAssets(const FString& Path, bool bRecursive, const FS
 		return false;
 	}
 
-	FAssetRegistryModule& RegistryModule = FAssetRegistryModule::GetRegistry();
+	FAssetRegistryModule& RegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 	IAssetRegistry& Registry = RegistryModule.Get();
 
 	// Ensure the asset registry is ready
@@ -77,7 +80,7 @@ bool FMCPAssetService::ListAssetsByClass(const FString& ClassName, TArray<FAsset
 		return false;
 	}
 
-	FAssetRegistryModule& RegistryModule = FAssetRegistryModule::GetRegistry();
+	FAssetRegistryModule& RegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 	IAssetRegistry& Registry = RegistryModule.Get();
 
 	// Ensure the asset registry is ready
@@ -100,7 +103,7 @@ bool FMCPAssetService::ListAssetsByTags(const TArray<FString>& Tags, TArray<FAss
 		return false;
 	}
 
-	FAssetRegistryModule& RegistryModule = FAssetRegistryModule::GetRegistry();
+	FAssetRegistryModule& RegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 	IAssetRegistry& Registry = RegistryModule.Get();
 
 	// Ensure the asset registry is ready
@@ -112,7 +115,7 @@ bool FMCPAssetService::ListAssetsByTags(const TArray<FString>& Tags, TArray<FAss
 	FARFilter AssetFilter;
 	for (const FString& Tag : Tags)
 	{
-		AssetFilter.Tags.Add(FName(*Tag));
+		AssetFilter.TagsAndValues.Add(FName(*Tag));
 	}
 
 	return Registry.GetAssets(AssetFilter, OutAssets);
@@ -125,7 +128,7 @@ bool FMCPAssetService::GetAsset(const FString& AssetPath, FAssetData& OutAssetDa
 		return false;
 	}
 
-	FAssetRegistryModule& RegistryModule = FAssetRegistryModule::GetRegistry();
+	FAssetRegistryModule& RegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 	IAssetRegistry& Registry = RegistryModule.Get();
 
 	// Ensure the asset registry is ready
@@ -152,7 +155,7 @@ bool FMCPAssetService::GetAssetMetadata(const FString& AssetPath, TSharedPtr<FJs
 		return false;
 	}
 
-	FAssetRegistryModule& RegistryModule = FAssetRegistryModule::GetRegistry();
+	FAssetRegistryModule& RegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 	IAssetRegistry& Registry = RegistryModule.Get();
 
 	// Ensure the asset registry is ready
@@ -194,15 +197,6 @@ bool FMCPAssetService::GetAssetMetadata(const FString& AssetPath, TSharedPtr<FJs
 		TagArray.Add(MakeShared<FJsonValueObject>(TagObj));
 	}
 	OutMetadata->SetArrayField(TEXT("Tags"), TagArray);
-
-	// Get asset registry info
-	FAssetRegistryModule& AssetRegModule = FAssetRegistryModule::Get();
-	FAssetPackageInfo PackageInfo;
-	if (AssetRegModule.GetRegistry().GetAssetPackageInfo(AssetData.PackageName, PackageInfo))
-	{
-		OutMetadata->SetNumberField(TEXT("PackageSize"), PackageInfo.DiskSize);
-	}
-
 	return true;
 }
 
@@ -213,7 +207,7 @@ bool FMCPAssetService::GetAssetContent(const FString& AssetPath, FString& OutCon
 		return false;
 	}
 
-	FAssetRegistryModule& RegistryModule = FAssetRegistryModule::GetRegistry();
+	FAssetRegistryModule& RegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 	IAssetRegistry& Registry = RegistryModule.Get();
 
 	FString ValidPath = AssetPath;
@@ -350,7 +344,7 @@ bool FMCPAssetService::DuplicateAsset(const FString& SourcePath, const FString& 
 
 bool FMCPAssetService::DeleteAsset(const FString& AssetPath)
 {
-	FAssetRegistryModule& RegistryModule = FAssetRegistryModule::GetRegistry();
+	FAssetRegistryModule& RegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 	IAssetRegistry& Registry = RegistryModule.Get();
 
 	FString ValidPath = AssetPath;
@@ -391,7 +385,7 @@ bool FMCPAssetService::RenameAsset(const FString& OldPath, const FString& NewPat
 		return false;
 	}
 
-	FAssetRegistryModule& RegistryModule = FAssetRegistryModule::GetRegistry();
+	FAssetRegistryModule& RegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 	IAssetRegistry& Registry = RegistryModule.Get();
 
 	FString ValidOldPath = OldPath;
@@ -430,9 +424,9 @@ bool FMCPAssetService::RenameAsset(const FString& OldPath, const FString& NewPat
 
 	// Create rename data
 	FAssetRenameData RenameData;
-	RenameData.OriginalObject = SourceAssetData.GetAsset();
-	RenameData.PackagePath = FName(*NewFolder);
-	RenameData.AssetName = FName(*NewName);
+	RenameData.Asset = SourceAssetData.GetAsset();
+	RenameData.NewPackagePath = NewFolder;
+	RenameData.NewName = NewName;
 
 	TArray<FAssetRenameData> RenameList;
 	RenameList.Add(RenameData);
@@ -482,7 +476,7 @@ bool FMCPAssetService::ExportAsset(const FString& AssetPath, const FString& Dest
 		return false;
 	}
 
-	FAssetRegistryModule& RegistryModule = FAssetRegistryModule::GetRegistry();
+	FAssetRegistryModule& RegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 	IAssetRegistry& Registry = RegistryModule.Get();
 
 	FString ValidPath = AssetPath;
@@ -518,18 +512,7 @@ bool FMCPAssetService::ExportAsset(const FString& AssetPath, const FString& Dest
 	ExportTask->bSelected = false;
 	ExportTask->bReplaceIdentical = true;
 	ExportTask->bPrompt = false;
-	ExportTask->bSilent = true;
-
-	// Get exporter for the asset class
-	UExporter* Exporter = UExporter::FindExporter(AssetObject);
-	if (!Exporter)
-	{
-		return false;
-	}
-
-	// Export using the first available exporter
-	bool bSuccess = Exporter->ExportObject(AssetObject, ExportTask);
-
+	bool bSuccess = UExporter::RunAssetExportTask(ExportTask);
 	return bSuccess;
 }
 
@@ -540,7 +523,7 @@ bool FMCPAssetService::GetDependencies(const FString& AssetPath, TArray<FName>& 
 		return false;
 	}
 
-	FAssetRegistryModule& RegistryModule = FAssetRegistryModule::GetRegistry();
+	FAssetRegistryModule& RegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 	IAssetRegistry& Registry = RegistryModule.Get();
 
 	FString ValidPath = AssetPath;
@@ -579,7 +562,7 @@ bool FMCPAssetService::GetReferencers(const FString& AssetPath, TArray<FName>& O
 		return false;
 	}
 
-	FAssetRegistryModule& RegistryModule = FAssetRegistryModule::GetRegistry();
+	FAssetRegistryModule& RegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 	IAssetRegistry& Registry = RegistryModule.Get();
 
 	FString ValidPath = AssetPath;
